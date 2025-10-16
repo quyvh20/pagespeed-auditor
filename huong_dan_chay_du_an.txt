@@ -1,0 +1,47 @@
+==============================
+SiteSpeed Auditor - Implementation Guide
+==============================
+
+🧩 INITIAL PROJECT SETUP
+------------------------------
+1️⃣ Open Command Prompt (CMD)
+   cd C:\Users\Admin\OneDrive\Documents\pagespeed-auditor
+
+2️⃣ Create virtual environment
+   python -m venv venv
+
+3️⃣ Activate virtual environment
+   venv\Scripts\activate.bat
+
+4️⃣ Install required libraries
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   python -m pip install streamlit
+
+5️⃣ (Optional) Set permanent API key
+   setx GOOGLE_API_KEY "YOUR_API_KEY"
+
+6️⃣ Run application
+   python -m streamlit run pagespeed_audit_app.py
+
+7️⃣ Open browser → http://localhost:8501
+
+
+🧰 RUNNING LATER (AFTER SETUP)
+------------------------------
+1️⃣ Open CMD
+   cd C:\Users\Admin\OneDrive\Documents\pagespeed-auditor
+
+2️⃣ Activate virtual environment
+   venv\Scripts\activate.bat
+
+3️⃣ Run app
+   python -m streamlit run pagespeed_audit_app.py
+
+==============================
+💡 Notes:
+- Measurement history is saved at: data\history.json
+- To delete history, simply delete this file.
+- If you encounter 'experimental_rerun' error, replace it with 'st.rerun()' in the code file.
+- Main configuration file: pagespeed_audit_app.py
+==============================
