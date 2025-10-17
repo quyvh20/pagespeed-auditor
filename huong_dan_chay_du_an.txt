@@ -14,9 +14,7 @@ SiteSpeed Auditor - Implementation Guide
    venv\Scripts\activate.bat
 
 4️⃣ Install required libraries
-   python -m pip install --upgrade pip
-   python -m pip install -r requirements.txt
-   python -m pip install streamlit
+   pip install streamlit pandas requests beautifulsoup4
 
 5️⃣ (Optional) Set permanent API key
    setx GOOGLE_API_KEY "YOUR_API_KEY"
