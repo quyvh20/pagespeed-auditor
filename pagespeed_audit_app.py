@@ -447,7 +447,7 @@ with st.sidebar:
         "Both (not recommended)"
     ]
     device = st.selectbox("Device strategy", device_options, index=0, disabled=st.session_state.get("running", False) or st.session_state.get("crawling", False))
-    max_pages = st.number_input("Max crawl pages", min_value=1, max_value=2000, value=25, step=1, disabled=st.session_state.get("running", False) or st.session_state.get("crawling", False))
+    max_pages = st.number_input("Max crawl pages", min_value=1, max_value=2000, value=250, step=1, disabled=st.session_state.get("running", False) or st.session_state.get("crawling", False))
     crawl_delay = st.number_input("Crawl delay (seconds)", min_value=0.0, max_value=5.0, value=0.0, step=0.1, disabled=st.session_state.get("running", False) or st.session_state.get("crawling", False))
     crawl_workers = st.number_input("Fetch workers (parallel threads)", min_value=1, max_value=15, value=10, step=1, disabled=st.session_state.get("running", False) or st.session_state.get("crawling", False))
     audit_workers = st.number_input("Audit workers (parallel threads)", min_value=1, max_value=15, value=10, step=1, disabled=st.session_state.get("running", False) or st.session_state.get("crawling", False))
