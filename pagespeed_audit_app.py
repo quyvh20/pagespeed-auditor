@@ -379,7 +379,6 @@ def extract_issues_table(lhr: dict) -> pd.DataFrame:
 
 
 def run_pagespeed_safe(u, device, api_key, backup_key=None):
-    """Run PageSpeed with main key and fallback to backup if available."""
     try:
         data = run_pagespeed(u, strategy=device, api_key=api_key)
         return u, data, "primary"
@@ -391,9 +390,15 @@ def run_pagespeed_safe(u, device, api_key, backup_key=None):
                 return u, data, "backup"
             except Exception as e2:
                 return u, {"error": f"Primary+Backup failed: {err_msg} | {e2}"}, "failed"
+        import time
+        for attempt in range(2):
+            time.sleep(2 * (attempt + 1))
+            try:
+                data = run_pagespeed(u, strategy=device, api_key=api_key)
+                return u, data, "retry"
+            except Exception:
+                continue
         return u, {"error": f"Primary failed: {err_msg}"}, "failed"
-
-
 
 def extract_overview_scores(lhr: dict):
     cats = _deep_get(lhr, "lighthouseResult.categories") or {}
@@ -539,11 +544,13 @@ with st.expander("Step 1: Enter or crawl list of URLs", expanded=True):
 
 with st.expander("Step 2: Batch PageSpeed audits", expanded=True):
     urls_to_measure = st.session_state.urls_to_measure
-    colstart, colstop = st.columns([1,1])
+    colstart, colstop = st.columns([1, 1])
     with colstart:
         start_audit = st.button("Start audits", disabled=st.session_state.running)
     with colstop:
         stop_audit = st.button("Stop", disabled=not st.session_state.running)
+
+    # --- Start audit ---
     if start_audit and not st.session_state.running:
         if not api_key:
             st.error("You must enter an API key.")
@@ -551,20 +558,28 @@ with st.expander("Step 2: Batch PageSpeed audits", expanded=True):
             st.error("You must provide or crawl URLs before auditing.")
         else:
             st.session_state.running = True
+            if "results" not in st.session_state:
+                st.session_state.results = {}
             st.rerun()
+
+    # --- Stop audit ---
     if stop_audit and st.session_state.running:
         st.session_state.running = False
+
+    # --- Khi đang chạy audit ---
     if st.session_state.running:
-        results = {}
+        # Giữ lại kết quả cũ giữa các rerun
+        results = st.session_state.get("results", {})
         max_workers = int(audit_workers)
         progress = st.progress(0.0, text="Auditing...")
+
         urls_total = len(urls_to_measure)
-        completed = 0
-        success_count = 0
-        fail_count = 0
+        completed = len(results)
+        success_count = sum(1 for u, d in results.items() if "error" not in d)
+        fail_count = sum(1 for u, d in results.items() if "error" in d)
         using_backup = 0
 
-        audit_devices = []
+        # Thiết bị audit
         if device_options[device_options.index(device)] == "Both (not recommended)":
             audit_devices = ["mobile", "desktop"]
         elif device_options[device_options.index(device)] == "Mobile (recommended for SEO)":
@@ -572,28 +587,41 @@ with st.expander("Step 2: Batch PageSpeed audits", expanded=True):
         else:
             audit_devices = ["desktop"]
 
+        # Chỉ audit các URL chưa có kết quả
+        pending_urls = [u for u in urls_to_measure if u not in results]
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
                 executor.submit(run_pagespeed_safe, u, dev, api_key, backup_api_key): (u, dev)
-                for u in urls_to_measure for dev in audit_devices
+                for u in pending_urls for dev in audit_devices
             }
             for future in concurrent.futures.as_completed(futures):
                 if not st.session_state.running:
                     break
-                u, data, key_used = future.result()
+                try:
+                    u, data, key_used = future.result()
+                except Exception as e:
+                    u, data, key_used = "unknown", {"error": f"Unhandled exception: {e}"}, "failed"
+
+                if u == "unknown":
+                    continue
+                results[u] = data
                 if "error" not in data:
-                    results[u] = data
                     success_count += 1
                 else:
                     fail_count += 1
                 if key_used == "backup":
                     using_backup += 1
                 completed += 1
+
                 progress.progress(
                     completed / (urls_total * len(audit_devices)),
                     text=f"Completed {completed}/{urls_total * len(audit_devices)} audits"
-                    + (f" | Using backup key for {using_backup}" if using_backup else "")
                 )
+
+                # Lưu checkpoint tạm mỗi 50 URL
+                if completed % 50 == 0:
+                    st.session_state.results = results
 
         st.session_state.results = results
         st.session_state.running = False
@@ -602,18 +630,20 @@ with st.expander("Step 2: Batch PageSpeed audits", expanded=True):
         st.success(f"✅ Done! {success_count} success, {fail_count} failed."
                    + (f" ({using_backup} used backup key)" if using_backup else ""))
 
+        # Lưu vào lịch sử
         now = time.strftime('%Y-%m-%d %H:%M:%S')
         audits_history = st.session_state.audits_history[-9:] if len(st.session_state.audits_history) >= 10 else st.session_state.audits_history
         record = {
             'timestamp': now,
             'device': device,
             'base_url': urls_to_measure[0] if urls_to_measure else '',
-            'urls': [u for u in urls_to_measure if u in results],  # exclude fails
+            'urls': [u for u in urls_to_measure if u in results],
             'results': results
         }
         if not audits_history or audits_history[-1]['timestamp'] != now:
             audits_history.append(record)
         st.session_state.audits_history = audits_history[-10:]
+
 
 
 urls_to_measure = st.session_state.urls_to_measure
@@ -623,8 +653,25 @@ if urls_to_measure and results:
     st.write("### Per-page / report results")
     if "idx" not in st.session_state:
         st.session_state.idx = 0
-    options = urls_to_measure or []
-    st.selectbox("Select page", options=options, index=st.session_state.idx, key="picklist_select", disabled=st.session_state.running or st.session_state.crawling)
+    options = [
+        u for u, d in results.items()
+        if isinstance(d, dict) and "lighthouseResult" in d
+    ]
+
+    if not options:
+        st.warning("No valid audit results to display.")
+    else:
+        selected_url = st.selectbox(
+            "Select page",
+            options=options,
+            index=st.session_state.idx if st.session_state.idx < len(options) else 0,
+            key="picklist_select",
+            disabled=st.session_state.running or st.session_state.crawling
+        )
+        st.session_state.idx = options.index(selected_url)
+        cur_url = selected_url
+        cur = results.get(cur_url, {})
+
     st.session_state.idx = options.index(st.session_state.picklist_select) if st.session_state.picklist_select in options else 0
 
     cur_idx = st.session_state.idx

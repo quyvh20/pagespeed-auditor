@@ -5,7 +5,8 @@ SiteSpeed Auditor - Implementation Guide
 🧩 INITIAL PROJECT SETUP
 ------------------------------
 1️⃣ Open Command Prompt (CMD)
-   cd C:\Users\Admin\OneDrive\Documents\pagespeed-auditor
+   cd <project-directory-path>
+   example: cd C:\Users\Admin\Project\pagespeed-auditor
 
 2️⃣ Create virtual environment
    python -m venv venv
@@ -16,7 +17,7 @@ SiteSpeed Auditor - Implementation Guide
 4️⃣ Install required libraries
    pip install streamlit pandas requests beautifulsoup4
 
-5️⃣ (Optional) Set permanent API key
+5️⃣ (Optional, not recommend) Set permanent API key
    setx GOOGLE_API_KEY "YOUR_API_KEY"
 
 6️⃣ Run application
@@ -25,10 +26,11 @@ SiteSpeed Auditor - Implementation Guide
 7️⃣ Open browser → http://localhost:8501
 
 
-🧰 RUNNING LATER (AFTER SETUP)
+🧰 RUNNING FROM THE SECOND TIME (AFTER SETUP)
 ------------------------------
 1️⃣ Open CMD
-   cd C:\Users\Admin\OneDrive\Documents\pagespeed-auditor
+   cd <project-directory-path>
+   example: cd C:\Users\Admin\Project\pagespeed-auditor
 
 2️⃣ Activate virtual environment
    venv\Scripts\activate.bat
